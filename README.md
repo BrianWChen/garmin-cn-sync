@@ -88,7 +88,7 @@ China Garmin is the source of truth for these fields: differing Intervals.icu va
 - Activities are matched by UTC start time within 3 seconds, duration within 5 seconds, and distance within 100 meters. Similar but distinct activities can be skipped and need manual review. Originals are not deleted.
 - Original FIT, TCX, or GPX exports are uploaded. A pending record is saved before upload. If the response is inconclusive, the destination is queried again after waits of 2, 4, and 8 seconds, plus request time. Unconfirmed uploads stop the run. Subsequent runs check pending entries without uploading again. Only clear a pending entry after verifying that the upload failed and no matching destination activity exists.
 - Workout comparison uses the imported name, description, steps, and targets, with recorded cross-region IDs. Calendar entries are deduplicated by destination workout ID and date.
-- Workout sync is additive. Editing a source workout can create a new version. Rescheduling or cancelling it does not remove the old China calendar entry; review and clean it up manually.
+- COM is authoritative for synced calendar entries. If a day changes, replacements are prepared first, then the old managed CN schedules are removed before the current COM sessions are scheduled. Duplicates, cancellations, and rescheduling are reconciled within the sync window. Unrelated CN workouts are preserved. Old workout templates may remain in the library; only calendar schedules are removed. Calendar replacements are backed up under `private/workout-backups/` and read back for verification. Rerunning repairs an interrupted replacement.
 - This is not a complete account clone. Body Battery, gear, photos, badges, and training status are not synced. Activity imports do not guarantee every Garmin-derived metric or downstream third-party export.
 - This is unofficial software. Garmin interface or authentication changes can break it. Check an actual activity and workout after the first run.
 - `Calendar response has no workoutId` means the calendar schema differs from the expected format. The script stops; the mapping must be adjusted before workout sync can be considered successful.
@@ -98,10 +98,10 @@ China Garmin is the source of truth for these fields: differing Intervals.icu va
 
 Uses `garminconnect==0.3.17`. Bidirectional activity sync, name correction, and wellness updates with per-day read-back have been verified on real accounts. Device-side workout delivery still needs checking on the bike computer. All test fixtures are synthetic.
 
-Run the 14 offline tests:
+Run the 19 offline tests:
 
 ```powershell
-python -m unittest test_sync test_wellness -v
+python -m unittest test_sync test_wellness test_workouts -v
 ```
 
 ## References

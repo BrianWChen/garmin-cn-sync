@@ -240,42 +240,81 @@ def calendar(api, start, end):
 
 
 def sync_workouts(apis, state, start, end, apply):
+    from collections import Counter
     src, dst = apis['com'], apis['cn']
     source = calendar(src, start, end)
     target = calendar(dst, start, end)
-    target_dates = {(str(x['workoutId']), str(x['date'])[:10]) for x in target if 'workoutId' in x}
+    mappings = state.setdefault('workouts', {})
+    managed = {str(tid) for tid in mappings.values()}
     target_library = library(dst)
-    target_hashes = {}
-    for w in target_library:
-        full = dst.get_workout_by_id(w['workoutId'])
-        target_hashes[fingerprint(full)] = str(w['workoutId'])
-    # Only upcoming scheduled workouts, avoiding copying the whole historical library.
+    target_ids = {str(w['workoutId']) for w in target_library}
+    target_hashes = {fingerprint(dst.get_workout_by_id(w['workoutId'])): str(w['workoutId'])
+                     for w in target_library}
+    desired = {}
+    resolved = {}
+    # Prepare the replacements before removing calendar entries. Persist mappings
+    # immediately so a failed schedule write is recoverable on the next run.
     for item in source:
-        if 'workoutId' not in item:
+        if not item.get('workoutId'):
             raise RuntimeError('Calendar response has no workoutId; inspect account schema first.')
         sid, day = str(item['workoutId']), str(item['date'])[:10]
-        full = src.get_workout_by_id(sid)
-        digest = fingerprint(full)
-        marker = f'{sid}:{digest}'
-        tid = state['workouts'].get(marker) or target_hashes.get(digest)
-        if tid and not any(str(w['workoutId']) == str(tid) for w in target_library):
-            raise RuntimeError('Previously copied workout was removed; resolve before reimporting.')
-        if not tid:
-            print(f'{"CREATE" if apply else "WOULD CREATE"} workout {full.get("workoutName")}')
-            if apply:
-                created = dst.upload_workout(payload(full))
-                tid = str(created['workoutId'])
-                state['workouts'][marker] = tid
-                target_hashes[digest] = tid
-                target_library.append(created)
+        if sid not in resolved:
+            full = src.get_workout_by_id(sid)
+            digest = fingerprint(full)
+            marker = f'{sid}:{digest}'
+            tid = mappings.get(marker)
+            if tid and str(tid) not in target_ids:
+                tid = None
+            tid = str(tid) if tid else target_hashes.get(digest)
+            if not tid:
+                print(f'{"CREATE" if apply else "WOULD CREATE"} workout {full.get("workoutName")}')
+                if apply:
+                    created = dst.upload_workout(payload(full))
+                    tid = str(created['workoutId'])
+                    target_ids.add(tid)
+                    target_hashes[digest] = tid
+                else:
+                    tid = f'new:{marker}'
+            if apply and mappings.get(marker) != tid:
+                mappings[marker] = tid
                 save(state)
-        if tid and (str(tid), day) in target_dates:
+            managed.add(tid)
+            resolved[sid] = tid
+        desired.setdefault(day, set()).add(resolved[sid])
+
+    days = sorted(set(desired) | {str(x['date'])[:10] for x in target
+                                 if str(x.get('workoutId')) in managed})
+    for day in days:
+        current = [x for x in target if str(x['date'])[:10] == day
+                   and str(x.get('workoutId')) in managed]
+        wanted = desired.get(day, set())
+        if Counter(str(x['workoutId']) for x in current) == Counter(wanted):
             continue
-        print(f'{"SCHEDULE" if apply else "WOULD SCHEDULE"} {day}: {full.get("workoutName")}')
-        if apply:
+        # Calendar item id is the schedule id, not the workout template id.
+        if any(not x.get('id') or x.get('protectedWorkoutSchedule') for x in current):
+            raise RuntimeError(f'Cannot safely replace protected or unidentified CN schedule on {day}.')
+        print(f'{"REPLACE" if apply else "WOULD REPLACE"} CN calendar {day}: '
+              f'{len(current)} old -> {len(wanted)} COM workouts')
+        if not apply:
+            continue
+        backup = PRIVATE / 'workout-backups'
+        backup.mkdir(exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+        (backup / f'{day}-{stamp}.json').write_text(
+            json.dumps({'before': current, 'desiredWorkoutIds': sorted(wanted)},
+                       ensure_ascii=False, indent=2), encoding='utf-8')
+        for item in current:
+            dst.unschedule_workout(item['id'])
+        for tid in sorted(wanted):
             dst.schedule_workout(tid, day)
-            target_dates.add((str(tid), day))
-    print('Workout sync is additive: changed or cancelled source sessions require calendar review.')
+        actual = calendar(dst, datetime.strptime(day, '%Y-%m-%d').date(),
+                          datetime.strptime(day, '%Y-%m-%d').date())
+        actual_ids = Counter(str(x['workoutId']) for x in actual
+                             if str(x.get('workoutId')) in managed)
+        if actual_ids != Counter(wanted):
+            raise RuntimeError(f'CN calendar replacement for {day} was not confirmed. Rerun to reconcile.')
+        print(f'CONFIRMED CN calendar {day}')
+    print('COM is authoritative for synced calendar entries; unrelated CN workouts are preserved.')
 
 
 def main():
