@@ -1,0 +1,8 @@
+.packages/
+.venv/
+private/
+__pycache__/
+.tools/
+.env
+.env.*
+*.log
