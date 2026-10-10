@@ -32,7 +32,7 @@ python -m pip install --target .packages -r requirements.txt
 在 PowerShell 中：
 
 ```powershell
-cd .\GarminData
+cd .\garmin-cn-sync
 python sync_garmin.py                         # 预览，不上传
 python sync_garmin.py --apply                 # 三个方向一起补齐
 python sync_garmin.py --apply --since 2025-01-01  # 补较早漏传的活动
