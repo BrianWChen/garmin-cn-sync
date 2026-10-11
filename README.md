@@ -104,6 +104,14 @@ Run the 19 offline tests:
 python -m unittest test_sync test_wellness test_workouts -v
 ```
 
+## License
+
+Copyright (c) 2026 BrianWChen. This project's own code is available under the
+[MIT License](LICENSE). Dependencies retain their own licenses; see
+[Third-party notices](THIRD_PARTY_NOTICES.md) for `python-garminconnect` attribution.
+This is an unofficial project, not affiliated with or endorsed by Garmin or
+Intervals.icu.
+
 ## References
 
 - [python-garminconnect](https://github.com/cyberjunky/python-garminconnect)

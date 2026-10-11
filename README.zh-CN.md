@@ -96,4 +96,11 @@ python sync_garmin.py --only wellness --since 2025-01-09 --until 2025-01-09
 
 字段依据：[Intervals.icu wellness API](https://forum.intervals.icu/t/best-way-to-integrate-apple-watch-apple-health-data-into-intervals-icu/5776/12)，[Garmin HRV Status](https://www.garmin.com/en-IE/garmin-technology/health-science/hrv-status/)。
 
+## 版权与许可证
+
+Copyright (c) 2026 BrianWChen。本项目自身代码采用 [MIT 许可证](LICENSE)。
+第三方依赖保留各自的许可证；`python-garminconnect` 的作者与授权信息见
+[第三方版权声明](THIRD_PARTY_NOTICES.md)。本项目为非官方项目，与 Garmin 或
+Intervals.icu 无隶属关系，也未获其背书。
+
 接口来源：[python-garminconnect](https://github.com/cyberjunky/python-garminconnect)。
