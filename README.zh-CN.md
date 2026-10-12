@@ -47,6 +47,29 @@ python sync_garmin.py --apply --only workouts --workout-days 28
 
 重装依赖：`python -m pip install --target .packages -r requirements.txt`。
 
+## 保留同次训练的两边原始记录（可选）
+
+CN 用 Garmin 记录室内骑行、COM 用 Zwift 记录同次训练时，可加
+`--keep-overlapping-originals`，两份记录各留在原账号，不跨区上传，也不改名。
+默认同步行为不变。
+
+```powershell
+python sync_garmin.py --only activities --keep-overlapping-originals
+python sync_garmin.py --apply --only activities --keep-overlapping-originals
+sync.cmd --keep-overlapping-originals
+```
+
+上传前先检查两边记录。配对条件：开始时间相差不超过 10 分钟、实际起止跨度
+重叠达到较短跨度的 90%、记录时长比达到 85%。室内距离不比较。
+CN 必须是来源标识为 GARMIN 的室内骑行；COM 必须是 ZWIFT 骑行，或在来源标识
+缺失时名称以 Zwift 开头的骑行。其他来源和室外骑行沿用现有副本判断。
+
+预览显示 `KEEP originals` 及判断依据。出现多条候选时显示
+`REVIEW ambiguous overlap`，暂停这些候选的上传和改名，需人工核对；较短的
+拆段记录可能达不到阈值，不自动合并判断。运行时两边都必须已收到原始记录。
+不删除已有副本，不把配对记为已上传；下次不加此参数会恢复普通同步。
+健康数据和课程同步不受影响。
+
 ## 指定历史数据范围
 
 `--from` / `--to` 指定起止日期，**包含首尾两天**。`--since` / `--until` 保留为同义参数。省略 `--to` 时截止今天，省略 `--from` 时活动回看 30 天、健康数据回看 7 天。开始日期必须不晚于结束日期，结束日期不能晚于今天。
@@ -75,7 +98,7 @@ python sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only names
 
 ## 验证状态
 
-使用 garminconnect 0.3.17，已实际验证活动双向补传、名称校正、wellness 写入及逐日回读确认。课程设备端接收仍需在码表核对。所有测试数据均为虚构。19 项离线测试通过，可运行 `python -m unittest test_sync test_wellness test_workouts -v`。
+使用 garminconnect 0.3.17，已实际验证活动双向补传、名称校正、wellness 写入及逐日回读确认。课程设备端接收仍需在码表核对。所有测试数据均为虚构。26 项离线测试通过，可运行 `python -m unittest test_sync test_wellness test_workouts test_overlap -v`。
 
 ## 每日健康数据：国内 Garmin → Intervals.icu
 

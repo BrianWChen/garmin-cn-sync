@@ -48,6 +48,32 @@ python sync_garmin.py --apply --only workouts --workout-days 28
 
 Reinstall dependencies with `python -m pip install --target .packages -r requirements.txt`.
 
+## Keep overlapping originals (optional)
+
+If CN records an indoor ride on a Garmin device and COM records the same session
+in Zwift, use `--keep-overlapping-originals` to leave both records in their original
+accounts. It also skips name sync for those activities. Default behavior is unchanged.
+
+```powershell
+python sync_garmin.py --only activities --keep-overlapping-originals
+python sync_garmin.py --apply --only activities --keep-overlapping-originals
+sync.cmd --keep-overlapping-originals
+```
+
+Both accounts are checked before uploads. A pair requires a start-time difference
+of at most 10 minutes, elapsed-time overlap of at least 90% of the shorter span,
+and a recorded-duration ratio of at least 85%. Indoor distances may differ and are
+not compared. CN must identify a GARMIN indoor cycling activity; COM must identify
+a Zwift cycling activity by manufacturer, or by a Zwift name when manufacturer is
+missing. Other sources and outdoor rides use the existing exact-copy checks.
+
+Preview reports `KEEP originals` with the evidence. Multiple candidate matches
+report `REVIEW ambiguous overlap` and hold all candidate uploads and name changes
+for manual review. Short split sessions may fall below the thresholds and are not
+automatically grouped. Both original records must already be available when the
+script runs. No existing copies are deleted, and the pair is not marked as uploaded;
+running without this option restores ordinary sync. Wellness and workouts are unaffected.
+
 ## Historical date ranges
 
 `--from` and `--to` select a range **including both boundary dates**. `--since` and `--until` remain equivalent aliases. The end defaults to today. Without a start date, activities look back 30 days and wellness covers 7 days. The start cannot be after the end, and the end cannot be in the future.
@@ -98,10 +124,10 @@ China Garmin is the source of truth for these fields: differing Intervals.icu va
 
 Uses `garminconnect==0.3.17`. Bidirectional activity sync, name correction, and wellness updates with per-day read-back have been verified on real accounts. Device-side workout delivery still needs checking on the bike computer. All test fixtures are synthetic.
 
-Run the 19 offline tests:
+Run the 26 offline tests:
 
 ```powershell
-python -m unittest test_sync test_wellness test_workouts -v
+python -m unittest test_sync test_wellness test_workouts test_overlap -v
 ```
 
 ## License

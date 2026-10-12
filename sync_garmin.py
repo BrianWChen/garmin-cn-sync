@@ -93,10 +93,14 @@ def confirm_activity(api, activity, start, end):
     return None, refreshed
 
 
-def sync_activities(apis, state, start, end, apply):
+def sync_activities(apis, state, start, end, apply, keep_overlapping_originals=False):
     activities = {r: api.get_activities_by_date(start, end) for r, api in apis.items()}
+    from activity_overlap import excluded_activities
+    excluded = excluded_activities(activities) if keep_overlapping_originals else {'cn': set(), 'com': set()}
     for src, dst in [('cn', 'com'), ('com', 'cn')]:
         for a in activities[src]:
+            if str(a['activityId']) in excluded[src]:
+                continue
             key = f'{src}:{a["activityId"]}->{dst}'
             saved = state['activities'].get(key)
             if saved and saved.get('status') != 'pending':
@@ -174,14 +178,20 @@ def name_source(state, cn, com):
     return 'com' if str(com.get('activityName', '')).startswith('Zwift') else 'cn'
 
 
-def sync_activity_names(apis, state, start, end, apply):
+def sync_activity_names(apis, state, start, end, apply, keep_overlapping_originals=False):
     cn_items = apis['cn'].get_activities_by_date(start, end)
     com_items = apis['com'].get_activities_by_date(start, end)
+    from activity_overlap import excluded_activities
+    excluded = excluded_activities({'cn': cn_items, 'com': com_items}) if keep_overlapping_originals else {'cn': set(), 'com': set()}
     for cn in cn_items:
+        if str(cn['activityId']) in excluded['cn']:
+            continue
         matches = [com for com in com_items if activity_match(cn, com)]
         if len(matches) != 1:
             continue
         com = matches[0]
+        if str(com['activityId']) in excluded['com']:
+            continue
         region = name_source(state, cn, com)
         src, target, dst = (cn, com, 'com') if region == 'cn' else (com, cn, 'cn')
         name = src.get('activityName')
@@ -320,6 +330,8 @@ def sync_workouts(apis, state, start, end, apply):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true', help='Perform uploads (default: preview)')
+    parser.add_argument('--keep-overlapping-originals', action='store_true',
+                        help='Keep overlapping CN Garmin indoor / COM Zwift rides in their original accounts')
     parser.add_argument('--from', '--since', dest='since', type=str,
                         help='Inclusive activity/wellness start date YYYY-MM-DD (--since is an alias)')
     parser.add_argument('--workout-days', type=int, default=14)
@@ -354,9 +366,11 @@ def main():
         state = json.loads(STATE.read_text(encoding='utf-8')) if STATE.exists() else {'activities': {}, 'workouts': {}}
         apis = {r: login(r) for r in (('cn',) if args.only == 'wellness' else ('cn', 'com'))}
         if args.only in ('activities', 'all'):
-            sync_activities(apis, state, start.isoformat(), end.isoformat(), args.apply)
+            sync_activities(apis, state, start.isoformat(), end.isoformat(), args.apply,
+                            args.keep_overlapping_originals)
         if args.only in ('activities', 'names', 'all'):
-            sync_activity_names(apis, state, start.isoformat(), end.isoformat(), args.apply)
+            sync_activity_names(apis, state, start.isoformat(), end.isoformat(), args.apply,
+                                args.keep_overlapping_originals)
         if args.only in ('workouts', 'all'):
             sync_workouts(apis, state, today, today+timedelta(days=args.workout_days-1), args.apply)
         if args.only in ('wellness', 'all'):
