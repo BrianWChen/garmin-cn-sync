@@ -102,11 +102,13 @@ python sync_garmin.py --only wellness --since 2025-01-09 --until 2025-01-09
 
 Double-click `wellness.cmd` to sync only wellness. Once configured, `sync.cmd` includes wellness alongside activities, names, and workouts. An explicit `--from` / `--since` applies to both activities and wellness. Each run compares destination values again, skips unchanged fields, and picks up Garmin corrections.
 
-Fields: resting heart rate, overnight sleep duration (excluding naps), sleep score, average sleeping heart rate, average sleeping SpO2, overnight average HRV (RMSSD), and steps.
+Fields: resting heart rate, overnight sleep duration (excluding naps), sleep score, average sleeping heart rate, average sleeping SpO2, overnight average HRV (RMSSD), steps, average sleeping respiration, measured weight (kg), morning training readiness, and floors climbed.
+
+Weight is recorded only on its measurement day (latest measurement that day, grams converted to kg), with no forward filling. Readiness uses only explicitly marked `AFTER_WAKEUP_RESET` snapshots; missing morning readings are skipped. Respiration uses the sleep average, and floors climbed are rounded to the nearest integer.
 
 Sleep belongs to Garmin's wake-up calendar date. Continuous all-day heart rate and SpO2 series are not imported. Neither the seven-day HRV average nor the highest five-minute value is used. Garmin stress is not mapped to the subjective stress field.
 
-China Garmin is the source of truth for these fields: differing Intervals.icu values, including manual entries, are overwritten. Missing source values are omitted, never sent as null. Other fields such as weight, subjective fatigue, and comments are not written. Before each update, the existing record is backed up under `private/wellness-backups/<athlete>/`; changed fields are read back and checked afterward. Today's steps may be incomplete and refresh on the next run. Avoid competing integrations overwriting the same fields.
+China Garmin is the source of truth for these fields: differing Intervals.icu values, including manual entries, are overwritten. Missing source values are omitted, never sent as null. Other fields such as subjective fatigue and comments are not written. Before each update, the existing record is backed up under `private/wellness-backups/<athlete>/`; changed fields are read back and checked afterward. Today's steps may be incomplete and refresh on the next run. Avoid competing integrations overwriting the same fields.
 
 ## Duplicate detection and limitations
 
@@ -124,7 +126,7 @@ China Garmin is the source of truth for these fields: differing Intervals.icu va
 
 Uses `garminconnect==0.3.17`. Bidirectional activity sync, name correction, and wellness updates with per-day read-back have been verified on real accounts. Device-side workout delivery still needs checking on the bike computer. All test fixtures are synthetic.
 
-Run the 26 offline tests:
+Run the 29 offline tests:
 
 ```powershell
 python -m unittest test_sync test_wellness test_workouts test_overlap -v

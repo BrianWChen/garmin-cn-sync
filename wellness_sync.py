@@ -6,7 +6,8 @@ import os
 from datetime import datetime, timedelta, timezone
 
 
-FIELDS = ('restingHR', 'sleepSecs', 'sleepScore', 'avgSleepingHR', 'spO2', 'hrv', 'steps')
+FIELDS = ('restingHR', 'sleepSecs', 'sleepScore', 'avgSleepingHR', 'spO2', 'hrv', 'steps',
+          'respiration', 'weight', 'readiness', 'floorsClimbed')
 
 
 def present_number(value, minimum, maximum):
@@ -14,7 +15,46 @@ def present_number(value, minimum, maximum):
             and math.isfinite(value) and minimum <= value <= maximum)
 
 
-def map_wellness(day, stats, sleep, hrv):
+def daily_weights(body):
+    """Latest valid measurement per Garmin calendar day; grams -> kilograms."""
+    result = {}
+    for item in (body or {}).get('dateWeightList') or []:
+        day, grams = item.get('calendarDate'), item.get('weight')
+        timestamp = item.get('timestampGMT')
+        if not day or not present_number(grams, 1000, 1000000):
+            continue
+        if not present_number(timestamp, 0, 1e16):
+            continue
+        if day not in result or timestamp > result[day][0]:
+            result[day] = (timestamp, grams / 1000)
+    return {day: value for day, (_, value) in result.items()}
+
+
+def morning_readiness(day, entries):
+    # The library's convenience helper falls back to arbitrary snapshots.
+    # Only an explicit wake-up snapshot is acceptable for this field.
+    entries = [entries] if isinstance(entries, dict) else (entries or [])
+    candidates = [x for x in entries
+                  if x.get('calendarDate') == day
+                  and x.get('inputContext') == 'AFTER_WAKEUP_RESET'
+                  and present_number(x.get('score'), 0, 100)]
+    if not candidates:
+        return None
+    selected = max(candidates, key=lambda x: (bool(x.get('primaryActivityTracker')),
+                                             str(x.get('timestamp') or '')))
+    return selected['score']
+
+
+def optional_data(api, method, *args):
+    from garminconnect import GarminConnectNotFoundError
+    try:
+        return getattr(api, method)(*args)
+    except GarminConnectNotFoundError:
+        print(f'SKIP {method}: source endpoint has no data')
+        return None
+
+
+def map_wellness(day, stats, sleep, hrv, weight=None, readiness=None):
     dto = (sleep or {}).get('dailySleepDTO') or {}
     summary = (hrv or {}).get('hrvSummary') or {}
     for label, obj in (('stats', stats), ('sleep', dto), ('hrv', summary)):
@@ -29,9 +69,16 @@ def map_wellness(day, stats, sleep, hrv):
         'spO2': (dto.get('averageSpO2Value'), 1, 100),
         'hrv': (summary.get('lastNightAvg', (sleep or {}).get('avgOvernightHrv')), 1, 1000),
         'steps': (stats.get('totalSteps'), 0, 200000),
+        'respiration': (dto.get('averageRespirationValue'), 1, 100),
+        'weight': (weight, 1, 1000),
+        'readiness': (readiness, 0, 100),
+        'floorsClimbed': (stats.get('floorsAscended'), 0, 10000),
     }
-    return {key: value for key, (value, lo, hi) in values.items()
-            if present_number(value, lo, hi)}
+    mapped = {key: value for key, (value, lo, hi) in values.items()
+              if present_number(value, lo, hi)}
+    if 'floorsClimbed' in mapped:
+        mapped['floorsClimbed'] = math.floor(mapped['floorsClimbed'] + 0.5)
+    return mapped
 
 
 def request_json(session, method, path, **kwargs):
@@ -75,12 +122,15 @@ def sync_wellness(api, state, start, end, apply, private, save):
         profile = request_json(session, 'GET', f'/athlete/{athlete}')
         athlete = profile['id']
         records = state.setdefault('wellness', {}).setdefault(athlete, {})
+        weights = daily_weights(optional_data(api, 'get_body_composition',
+                                              start.isoformat(), end.isoformat()))
         for offset in range((end - start).days + 1):
             day = (start + timedelta(days=offset)).isoformat()
             stats = api.get_stats(day) or {}
             sleep = api.get_sleep_data(day) or {}
             hrv = api.get_hrv_data(day) or {}
-            source = map_wellness(day, stats, sleep, hrv)
+            readiness = morning_readiness(day, optional_data(api, 'get_training_readiness', day))
+            source = map_wellness(day, stats, sleep, hrv, weights.get(day), readiness)
             if not source:
                 print(f'SKIP wellness {day}: no source data')
                 continue

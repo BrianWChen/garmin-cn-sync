@@ -98,7 +98,7 @@ python sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only names
 
 ## 验证状态
 
-使用 garminconnect 0.3.17，已实际验证活动双向补传、名称校正、wellness 写入及逐日回读确认。课程设备端接收仍需在码表核对。所有测试数据均为虚构。26 项离线测试通过，可运行 `python -m unittest test_sync test_wellness test_workouts test_overlap -v`。
+使用 garminconnect 0.3.17，已实际验证活动双向补传、名称校正、wellness 写入及逐日回读确认。课程设备端接收仍需在码表核对。所有测试数据均为虚构。29 项离线测试通过，可运行 `python -m unittest test_sync test_wellness test_workouts test_overlap -v`。
 
 ## 每日健康数据：国内 Garmin → Intervals.icu
 
@@ -113,9 +113,9 @@ python sync_garmin.py --only wellness --since 2025-01-09 --until 2025-01-09
 
 双击 `wellness.cmd` 只同步健康数据；配置后原 `sync.cmd` 会连同活动、名字和课程一起同步健康数据。`--since` 同时控制活动和健康数据起始日期；不指定时活动回看 30 天、健康回看 7 天。每次重新比较目标记录，已一致的字段跳过；Garmin 修正的数据会再次更新。
 
-同步字段：静息心率、夜间睡眠秒数（不叠加午睡）、睡眠评分、平均睡眠心率、睡眠平均血氧、整晚平均 HRV（RMSSD）、步数。睡眠按 Garmin 的醒来日归档。不是全天心率 / 血氧连续曲线；不导入七日 HRV 平均、最高五分钟 HRV，也不把 Garmin 压力分数写到主观压力字段。
+同步字段：静息心率、夜间睡眠秒数（不叠加午睡）、睡眠评分、平均睡眠心率、睡眠平均血氧、整晚平均 HRV（RMSSD）、步数、睡眠平均呼吸频率、测量体重（公斤）、晨起训练准备度、爬楼层数。体重只导入实际测量当天的数据，同一天多次测量取最新一次，克换算为公斤，不向后填充。准备度只取明确标记 `AFTER_WAKEUP_RESET` 的晨起值，缺失时跳过。呼吸频率取睡眠平均，爬楼层数四舍五入为整数。睡眠按 Garmin 的醒来日归档。不是全天心率 / 血氧连续曲线；不导入七日 HRV 平均、最高五分钟 HRV，也不把 Garmin 压力分数写到主观压力字段。
 
-国内是上述字段的来源：会覆盖 Intervals.icu 中同字段的不同值，包括手动录入值；没有源值就不更新，不发送 null。体重、主观疲劳、备注等其他字段不写入。写前原记录保存在 `private/wellness-backups/<athlete>/`，写后回读逐字段核对。今天的步数可能未完整，下次运行会刷新。请避免同时让其他来源反复覆盖同一健康字段。
+国内是上述字段的来源：会覆盖 Intervals.icu 中同字段的不同值，包括手动录入值；没有源值就不更新，不发送 null。主观疲劳、备注等其他字段不写入。写前原记录保存在 `private/wellness-backups/<athlete>/`，写后回读逐字段核对。今天的步数可能未完整，下次运行会刷新。请避免同时让其他来源反复覆盖同一健康字段。
 
 字段依据：[Intervals.icu wellness API](https://forum.intervals.icu/t/best-way-to-integrate-apple-watch-apple-health-data-into-intervals-icu/5776/12)，[Garmin HRV Status](https://www.garmin.com/en-IE/garmin-technology/health-science/hrv-status/)。
 

@@ -38,6 +38,10 @@ class WellnessTests(unittest.TestCase):
                 record.update(kwargs['json'])
             return dict(record)
         class Garmin:
+            def get_body_composition(self, *args):
+                return {}
+            def get_training_readiness(self, day):
+                return []
             def get_stats(self, day):
                 return {'calendarDate': day, 'restingHeartRate': 64}
             def get_sleep_data(self, day):
@@ -54,6 +58,31 @@ class WellnessTests(unittest.TestCase):
             self.assertEqual(record['comments'], 'manual note')
             self.assertEqual(record['sleepScore'], 80)
             self.assertEqual(len(list(Path(tmp).rglob('*.json'))), 1)
+
+    def test_new_fields_use_sleep_respiration_and_round_floors(self):
+        result = w.map_wellness('2000-01-09', {'floorsAscended': 4.6,
+                              'avgWakingRespirationValue': 22},
+                              {'dailySleepDTO': {'averageRespirationValue': 15}}, {},
+                              weight=68.5, readiness=0)
+        self.assertEqual(result, dict(respiration=15, floorsClimbed=5, weight=68.5, readiness=0))
+
+    def test_weights_use_latest_measurement_per_day_without_forward_fill(self):
+        values = w.daily_weights({'dateWeightList': [
+            {'calendarDate': '2000-01-09', 'weight': 68000, 'timestampGMT': 1000},
+            {'calendarDate': '2000-01-09', 'weight': 68500, 'timestampGMT': 2000},
+            {'calendarDate': '2000-01-08', 'weight': 69000, 'timestampGMT': 500}],
+            'totalAverage': {'weight': 68000}})
+        self.assertEqual(values['2000-01-09'], 68.5)
+        self.assertNotIn('2000-01-10', values)
+
+    def test_readiness_never_falls_back_to_after_exercise(self):
+        day = '2000-01-09'
+        items = [{'calendarDate': day, 'inputContext': 'AFTER_ACTIVITY', 'score': 99},
+                 {'calendarDate': day, 'inputContext': 'AFTER_WAKEUP_RESET', 'score': 60}]
+        self.assertEqual(w.morning_readiness(day, items), 60)
+        self.assertIsNone(w.morning_readiness(day, items[:1]))
+        self.assertIsNone(w.morning_readiness('2000-01-10', items))
+        self.assertIsNone(w.morning_readiness(day, {'calendarDate': day, 'score': 99}))
 
 
 if __name__ == '__main__':
