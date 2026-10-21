@@ -129,7 +129,7 @@ Uses `garminconnect==0.3.17`. Bidirectional activity sync, name correction, and 
 Run the 29 offline tests:
 
 ```powershell
-python -m unittest discover -s test -v
+python -m unittest discover -s tests -v
 ```
 
 ## License
