@@ -98,7 +98,7 @@ python sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only names
 
 ## 验证状态
 
-使用 garminconnect 0.3.17，已实际验证活动双向补传、名称校正、wellness 写入及逐日回读确认。课程设备端接收仍需在码表核对。所有测试数据均为虚构。29 项离线测试通过，可运行 `python -m unittest test_sync test_wellness test_workouts test_overlap -v`。
+使用 garminconnect 0.3.17，已实际验证活动双向补传、名称校正、wellness 写入及逐日回读确认。课程设备端接收仍需在码表核对。所有测试数据均为虚构。29 项离线测试通过，可运行 `python -m unittest discover -s test -v`。
 
 ## 每日健康数据：国内 Garmin → Intervals.icu
 
