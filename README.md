@@ -38,12 +38,12 @@ After importing workouts, sync the device with the China Garmin Connect app or G
 Run in PowerShell from the repository directory:
 
 ```powershell
-python sync_garmin.py                         # Preview without uploading
-python sync_garmin.py --apply                 # Activities, names, workouts, and configured wellness
-python sync_garmin.py --apply --since 2025-01-01  # Include older activities and wellness
-python sync_garmin.py --apply --only activities
-python sync_garmin.py --apply --only names     # Correct names of matched activities
-python sync_garmin.py --apply --only workouts --workout-days 28
+python scripts/sync_garmin.py                         # Preview without uploading
+python scripts/sync_garmin.py --apply                 # Activities, names, workouts, and configured wellness
+python scripts/sync_garmin.py --apply --since 2025-01-01  # Include older activities and wellness
+python scripts/sync_garmin.py --apply --only activities
+python scripts/sync_garmin.py --apply --only names     # Correct names of matched activities
+python scripts/sync_garmin.py --apply --only workouts --workout-days 28
 ```
 
 Reinstall dependencies with `python -m pip install --target .packages -r requirements.txt`.
@@ -55,8 +55,8 @@ in Zwift, use `--keep-overlapping-originals` to leave both records in their orig
 accounts. It also skips name sync for those activities. Default behavior is unchanged.
 
 ```powershell
-python sync_garmin.py --only activities --keep-overlapping-originals
-python sync_garmin.py --apply --only activities --keep-overlapping-originals
+python scripts/sync_garmin.py --only activities --keep-overlapping-originals
+python scripts/sync_garmin.py --apply --only activities --keep-overlapping-originals
 sync.cmd --keep-overlapping-originals
 ```
 
@@ -79,10 +79,10 @@ running without this option restores ordinary sync. Wellness and workouts are un
 `--from` and `--to` select a range **including both boundary dates**. `--since` and `--until` remain equivalent aliases. The end defaults to today. Without a start date, activities look back 30 days and wellness covers 7 days. The start cannot be after the end, and the end cannot be in the future.
 
 ```powershell
-python sync_garmin.py --from 2025-01-01 --to 2025-01-31 --only activities
-python sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only activities
-python sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only wellness
-python sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only names
+python scripts/sync_garmin.py --from 2025-01-01 --to 2025-01-31 --only activities
+python scripts/sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only activities
+python scripts/sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only wellness
+python scripts/sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only names
 ```
 
 Launchers accept the same arguments: `sync.cmd --from 2025-01-01 --to 2025-01-31` or `wellness.cmd --from 2025-01-01 --to 2025-01-31`.
@@ -91,13 +91,13 @@ Historical dates apply to activities, names, and wellness. Workouts still use th
 
 ## Wellness: Garmin China → Intervals.icu
 
-Set `INTERVALS_ICU_API_KEY`; `/athlete/0` resolves the current account automatically. Optionally set `INTERVALS_ICU_ATHLETE_ID`. Alternatively, run `python sync_garmin.py --configure-intervals` to enter the key locally with hidden input and save it in the ignored `private/intervals.json`.
+Set `INTERVALS_ICU_API_KEY`; `/athlete/0` resolves the current account automatically. Optionally set `INTERVALS_ICU_ATHLETE_ID`. Alternatively, run `python scripts/sync_garmin.py --configure-intervals` to enter the key locally with hidden input and save it in the ignored `private/intervals.json`.
 
 ```powershell
-python sync_garmin.py --only wellness                      # Preview the last 7 days
-python sync_garmin.py --apply --only wellness              # Sync the last 7 days
-python sync_garmin.py --apply --only wellness --since 2025-01-01
-python sync_garmin.py --only wellness --since 2025-01-09 --until 2025-01-09
+python scripts/sync_garmin.py --only wellness                      # Preview the last 7 days
+python scripts/sync_garmin.py --apply --only wellness              # Sync the last 7 days
+python scripts/sync_garmin.py --apply --only wellness --since 2025-01-01
+python scripts/sync_garmin.py --only wellness --since 2025-01-09 --until 2025-01-09
 ```
 
 Double-click `wellness.cmd` to sync only wellness. Once configured, `sync.cmd` includes wellness alongside activities, names, and workouts. An explicit `--from` / `--since` applies to both activities and wellness. Each run compares destination values again, skips unchanged fields, and picks up Garmin corrections.
@@ -126,11 +126,33 @@ China Garmin is the source of truth for these fields: differing Intervals.icu va
 
 Uses `garminconnect==0.3.17`. Bidirectional activity sync, name correction, and wellness updates with per-day read-back have been verified on real accounts. Device-side workout delivery still needs checking on the bike computer. All test fixtures are synthetic.
 
-Run the 29 offline tests:
+Run the 52 offline tests:
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
+
+The Python scripts live in `scripts/`; `.packages/` and `private/` remain at the
+repository root so existing installations and sessions continue to work. The root
+Windows launchers use the new entry point. On Linux/macOS, use Python 3.12+ and
+run the same commands from the repository root (the `.cmd` launchers are Windows-only).
+
+Install test tools and measure line **and branch** coverage:
+
+```sh
+python -m pip install -r requirements-dev.txt
+python -m coverage run -m unittest discover -s tests -v
+python -m coverage report
+python -m coverage html
+```
+
+The report covers all modules in `scripts/`, including CLI error handling. All
+474 executable statements and 178 branches are covered (100%); no coverage
+exclusions are used. `coverage report` fails below 100%. Open `htmlcov/index.html`
+for details. Generated reports are Git-ignored. CI runs these checks on Linux and
+Windows with Python 3.12. Offline coverage uses synthetic fixtures and mocked
+services; it does not establish real-account API compatibility or device delivery.
+
 
 ## License
 

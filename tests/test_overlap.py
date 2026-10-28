@@ -2,8 +2,8 @@
 import contextlib
 import io
 import unittest
-import activity_overlap as o
-import sync_garmin as s
+from scripts import activity_overlap as o
+from scripts import sync_garmin as s
 
 
 def ride(wid, maker, start='2000-01-09 06:00:00', duration=3600, distance=18000):

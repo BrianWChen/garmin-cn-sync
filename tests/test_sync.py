@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 import zipfile
-import sync_garmin as s
+from scripts import sync_garmin as s
 
 
 class BridgeTests(unittest.TestCase):
