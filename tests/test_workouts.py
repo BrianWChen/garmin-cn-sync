@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-import sync_garmin as s
+from scripts import sync_garmin as s
 
 
 def workout(wid, name):

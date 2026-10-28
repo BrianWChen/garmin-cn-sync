@@ -12,7 +12,8 @@ import sys
 import time
 import zipfile
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / '.packages'))
 PRIVATE = ROOT / 'private'
 STATE = PRIVATE / 'state.json'
@@ -95,7 +96,7 @@ def confirm_activity(api, activity, start, end):
 
 def sync_activities(apis, state, start, end, apply, keep_overlapping_originals=False):
     activities = {r: api.get_activities_by_date(start, end) for r, api in apis.items()}
-    from activity_overlap import excluded_activities
+    from scripts.activity_overlap import excluded_activities
     excluded = excluded_activities(activities) if keep_overlapping_originals else {'cn': set(), 'com': set()}
     for src, dst in [('cn', 'com'), ('com', 'cn')]:
         for a in activities[src]:
@@ -181,7 +182,7 @@ def name_source(state, cn, com):
 def sync_activity_names(apis, state, start, end, apply, keep_overlapping_originals=False):
     cn_items = apis['cn'].get_activities_by_date(start, end)
     com_items = apis['com'].get_activities_by_date(start, end)
-    from activity_overlap import excluded_activities
+    from scripts.activity_overlap import excluded_activities
     excluded = excluded_activities({'cn': cn_items, 'com': com_items}) if keep_overlapping_originals else {'cn': set(), 'com': set()}
     for cn in cn_items:
         if str(cn['activityId']) in excluded['cn']:
@@ -348,7 +349,7 @@ def main():
     except ValueError:
         parser.error('Dates must be valid YYYY-MM-DD values.')
     if args.configure_intervals:
-        from wellness_sync import credentials
+        from scripts.wellness_sync import credentials
         credentials(PRIVATE, configure=True)
         return
     if (start > end or end > today or not 1 <= args.workout_days <= 90
@@ -374,7 +375,7 @@ def main():
         if args.only in ('workouts', 'all'):
             sync_workouts(apis, state, today, today+timedelta(days=args.workout_days-1), args.apply)
         if args.only in ('wellness', 'all'):
-            from wellness_sync import configured, sync_wellness
+            from scripts.wellness_sync import configured, sync_wellness
             if args.only == 'wellness' or configured(PRIVATE):
                 wellness_start = start if args.since else end-timedelta(days=args.wellness_days-1)
                 sync_wellness(apis['cn'], state, wellness_start, end, args.apply, PRIVATE, save)

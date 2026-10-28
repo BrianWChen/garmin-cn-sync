@@ -1,4 +1,4 @@
 @echo off
 cd /d "%~dp0"
-python sync_garmin.py %*
+python scripts/sync_garmin.py %*
 pause

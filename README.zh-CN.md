@@ -37,12 +37,12 @@ python -m pip install --target .packages -r requirements.txt
 
 ```powershell
 cd .\garmin-cn-sync
-python sync_garmin.py                         # 预览，不上传
-python sync_garmin.py --apply                 # 活动、名称、课程和健康数据一起同步
-python sync_garmin.py --apply --since 2025-01-01  # 补较早漏传的活动
-python sync_garmin.py --apply --only activities
-python sync_garmin.py --apply --only names     # 只校正已匹配活动的名称
-python sync_garmin.py --apply --only workouts --workout-days 28
+python scripts/sync_garmin.py                         # 预览，不上传
+python scripts/sync_garmin.py --apply                 # 活动、名称、课程和健康数据一起同步
+python scripts/sync_garmin.py --apply --since 2025-01-01  # 补较早漏传的活动
+python scripts/sync_garmin.py --apply --only activities
+python scripts/sync_garmin.py --apply --only names     # 只校正已匹配活动的名称
+python scripts/sync_garmin.py --apply --only workouts --workout-days 28
 ```
 
 重装依赖：`python -m pip install --target .packages -r requirements.txt`。
@@ -54,8 +54,8 @@ CN 用 Garmin 记录室内骑行、COM 用 Zwift 记录同次训练时，可加
 默认同步行为不变。
 
 ```powershell
-python sync_garmin.py --only activities --keep-overlapping-originals
-python sync_garmin.py --apply --only activities --keep-overlapping-originals
+python scripts/sync_garmin.py --only activities --keep-overlapping-originals
+python scripts/sync_garmin.py --apply --only activities --keep-overlapping-originals
 sync.cmd --keep-overlapping-originals
 ```
 
@@ -75,10 +75,10 @@ CN 必须是来源标识为 GARMIN 的室内骑行；COM 必须是 ZWIFT 骑行�
 `--from` / `--to` 指定起止日期，**包含首尾两天**。`--since` / `--until` 保留为同义参数。省略 `--to` 时截止今天，省略 `--from` 时活动回看 30 天、健康数据回看 7 天。开始日期必须不晚于结束日期，结束日期不能晚于今天。
 
 ```powershell
-python sync_garmin.py --from 2025-01-01 --to 2025-01-31 --only activities
-python sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only activities
-python sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only wellness
-python sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only names
+python scripts/sync_garmin.py --from 2025-01-01 --to 2025-01-31 --only activities
+python scripts/sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only activities
+python scripts/sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only wellness
+python scripts/sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only names
 ```
 
 双击入口也可通过命令行传入日期：`sync.cmd --from 2025-01-01 --to 2025-01-31` 或 `wellness.cmd --from 2025-01-01 --to 2025-01-31`。历史范围仅作用于活动、名称和健康数据；课程仍由 `--workout-days` 控制未来范围。只补历史时建议指定 `--only activities` 或 `--only wellness`，避免同时处理未来课程。长时间跨度的健康数据按天读取，可能耗时较长，可按月分批执行。
@@ -98,17 +98,36 @@ python sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only names
 
 ## 验证状态
 
-使用 garminconnect 0.3.17，已实际验证活动双向补传、名称校正、wellness 写入及逐日回读确认。课程设备端接收仍需在码表核对。所有测试数据均为虚构。29 项离线测试通过，可运行 `python -m unittest discover -s tests -v`。
+使用 garminconnect 0.3.17，已实际验证活动双向补传、名称校正、wellness 写入及逐日回读确认。课程设备端接收仍需在码表核对。所有测试数据均为虚构。52 项离线测试通过，可运行 `python -m unittest discover -s tests -v`。
+
+脚本位于 `scripts/` 子目录，`.packages/` 与 `private/` 仍保留在仓库根目录，
+继续复用原有依赖和登录状态。根目录 Windows 启动器已更新入口。
+Linux/macOS 使用 Python 3.12+，在仓库根目录执行相同的 Python 命令即可。
+
+安装测试工具并统计行覆盖率及分支覆盖率：
+
+```sh
+python -m pip install -r requirements-dev.txt
+python -m coverage run -m unittest discover -s tests -v
+python -m coverage report
+python -m coverage html
+```
+
+统计包含 `scripts/` 下全部模块及命令行异常处理，未设置覆盖率排除项。
+目前 474 条可执行语句、178 个分支均覆盖（100%）；低于 100% 时
+`coverage report` 返回失败。可打开 `htmlcov/index.html` 查看逐行报告，
+生成文件已加入 Git 忽略。CI 在 Linux 和 Windows 的 Python 3.12 上执行同样检查。
+离线测试使用虚构数据和模拟服务，覆盖率不代表真实账号接口或设备接收已验证。
 
 ## 每日健康数据：国内 Garmin → Intervals.icu
 
-使用现有 `INTERVALS_ICU_API_KEY` 环境变量，当前账号由 `/athlete/0` 自动解析；也可指定 `INTERVALS_ICU_ATHLETE_ID`。没有环境变量时，运行 `python sync_garmin.py --configure-intervals`，在本机隐藏输入密钥，保存到已忽略的 `private/intervals.json`。
+使用现有 `INTERVALS_ICU_API_KEY` 环境变量，当前账号由 `/athlete/0` 自动解析；也可指定 `INTERVALS_ICU_ATHLETE_ID`。没有环境变量时，运行 `python scripts/sync_garmin.py --configure-intervals`，在本机隐藏输入密钥，保存到已忽略的 `private/intervals.json`。
 
 ```powershell
-python sync_garmin.py --only wellness                      # 最近 7 天预览
-python sync_garmin.py --apply --only wellness              # 最近 7 天同步
-python sync_garmin.py --apply --only wellness --since 2025-01-01
-python sync_garmin.py --only wellness --since 2025-01-09 --until 2025-01-09
+python scripts/sync_garmin.py --only wellness                      # 最近 7 天预览
+python scripts/sync_garmin.py --apply --only wellness              # 最近 7 天同步
+python scripts/sync_garmin.py --apply --only wellness --since 2025-01-01
+python scripts/sync_garmin.py --only wellness --since 2025-01-09 --until 2025-01-09
 ```
 
 双击 `wellness.cmd` 只同步健康数据；配置后原 `sync.cmd` 会连同活动、名字和课程一起同步健康数据。`--since` 同时控制活动和健康数据起始日期；不指定时活动回看 30 天、健康回看 7 天。每次重新比较目标记录，已一致的字段跳过；Garmin 修正的数据会再次更新。

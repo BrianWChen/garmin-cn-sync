@@ -4,8 +4,8 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-import sync_garmin
-import wellness_sync as w
+from scripts import sync_garmin
+from scripts import wellness_sync as w
 
 
 class WellnessTests(unittest.TestCase):
