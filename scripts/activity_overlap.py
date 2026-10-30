@@ -1,13 +1,11 @@
 """Conservative pairing of independent Garmin indoor and Zwift ride records."""
-from datetime import datetime, timezone
 import math
+from scripts.sync_utils import parse_gmt
 
 
 def interval(activity):
     try:
-        start = datetime.fromisoformat(activity['startTimeGMT'].replace('Z', '+00:00'))
-        if start.tzinfo is None:
-            start = start.replace(tzinfo=timezone.utc)
+        start = parse_gmt(activity['startTimeGMT'])
         seconds = float(activity.get('elapsedDuration') or activity['duration'])
         timer = float(activity['duration'])
         if not all(math.isfinite(x) and x > 0 for x in (seconds, timer)):

@@ -15,6 +15,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / '.packages'))
+from scripts.sync_utils import parse_gmt
 PRIVATE = ROOT / 'private'
 STATE = PRIVATE / 'state.json'
 
@@ -47,13 +48,11 @@ def login(region):
 
 def activity_match(a, b):
     # Compare UTC timestamps, not regional IDs or names. Ambiguous matches are skipped.
-    def ts(x):
-        return datetime.fromisoformat(x['startTimeGMT'].replace('Z', '+00:00')).replace(tzinfo=None)
     try:
-        return (abs((ts(a) - ts(b)).total_seconds()) <= 3
+        return (abs((parse_gmt(a['startTimeGMT']) - parse_gmt(b['startTimeGMT'])).total_seconds()) <= 3
                 and abs(float(a['duration']) - float(b['duration'])) <= 5
                 and abs(float(a.get('distance') or 0) - float(b.get('distance') or 0)) <= 100)
-    except (KeyError, ValueError, TypeError):
+    except (KeyError, ValueError, TypeError, OverflowError):
         raise RuntimeError('Activity has missing identity fields; stopped to avoid duplicates.')
 
 
