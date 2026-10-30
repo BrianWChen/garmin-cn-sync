@@ -12,6 +12,45 @@ from scripts import wellness_sync as w
 
 
 class WellnessErrorTests(unittest.TestCase):
+    def test_invalid_athlete_id_is_rejected_before_configuration_write(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {}, clear=True):
+            private = Path(tmp)
+            path = private / 'intervals.json'
+            for previous in (None, b'{"api_key":"synthetic","athlete_id":"i123"}'):
+                if previous is not None:
+                    path.write_bytes(previous)
+                for athlete in ('1i23', 'ii123', 'i', '-1', '\uff11\uff12\uff13', 'i123/../../x'):
+                    with self.subTest(athlete=athlete), patch.object(w.getpass, 'getpass', return_value='synthetic'), patch('builtins.input', return_value=athlete):
+                        with self.assertRaisesRegex(RuntimeError, 'Invalid'):
+                            w.credentials(private, configure=True)
+                        self.assertEqual(path.read_bytes() if path.exists() else None, previous)
+                with patch.dict(os.environ, {'INTERVALS_ICU_API_KEY': 'synthetic', 'INTERVALS_ICU_ATHLETE_ID': '1i23'}):
+                    with self.assertRaisesRegex(RuntimeError, 'Invalid'):
+                        w.credentials(private)
+
+    def test_backup_and_update_failures_never_confirm_wellness(self):
+        for failure in ('backup', 'update'):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp, patch.object(w, 'credentials', return_value=('synthetic', '0')), patch.object(w, 'request_json') as request:
+                api = MagicMock()
+                api.get_body_composition.return_value = {}
+                api.get_training_readiness.return_value = []
+                api.get_stats.return_value = {'totalSteps': 123}
+                api.get_sleep_data.return_value = {}
+                api.get_hrv_data.return_value = {}
+                request.side_effect = [{'id': 'i1'}, {}, RuntimeError('synthetic update failure')]
+                state, save = {}, MagicMock()
+                if failure == 'backup':
+                    with patch.object(Path, 'write_text', side_effect=OSError('synthetic backup failure')):
+                        with self.assertRaises(OSError):
+                            w.sync_wellness(api, state, date(2000,1,9), date(2000,1,9), True, Path(tmp), save)
+                    self.assertEqual([call.args[1] for call in request.call_args_list], ['GET', 'GET'])
+                else:
+                    with self.assertRaisesRegex(RuntimeError, 'synthetic update failure'):
+                        w.sync_wellness(api, state, date(2000,1,9), date(2000,1,9), True, Path(tmp), save)
+                    self.assertEqual(len(list(Path(tmp).rglob('*.json'))), 1)
+                self.assertEqual(state['wellness']['i1'], {})
+                save.assert_not_called()
+
     def test_credentials_configuration_defaults_overrides_and_validation(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {}, clear=True):
             private = Path(tmp) / 'private'

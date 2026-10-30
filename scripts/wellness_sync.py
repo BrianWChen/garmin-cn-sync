@@ -3,6 +3,7 @@ import getpass
 import json
 import math
 import os
+import re
 from datetime import datetime, timedelta, timezone
 
 
@@ -90,6 +91,11 @@ def request_json(session, method, path, **kwargs):
     return response.json()
 
 
+def validate_athlete(athlete):
+    if re.fullmatch(r'i?[0-9]+', str(athlete)) is None:
+        raise RuntimeError('Invalid Intervals.icu athlete ID.')
+
+
 def credentials(private, configure=False):
     config_file = private / 'intervals.json'
     if configure:
@@ -97,6 +103,7 @@ def credentials(private, configure=False):
         athlete = input('Athlete ID (Enter = current account): ').strip() or '0'
         if not key:
             raise RuntimeError('API Key is empty.')
+        validate_athlete(athlete)
         private.mkdir(exist_ok=True)
         config_file.write_text(json.dumps({'api_key': key, 'athlete_id': athlete}), encoding='utf-8')
         print('Saved local configuration to private/intervals.json.')
@@ -105,8 +112,7 @@ def credentials(private, configure=False):
     athlete = os.getenv('INTERVALS_ICU_ATHLETE_ID') or config.get('athlete_id', '0')
     if not key:
         raise RuntimeError('Set INTERVALS_ICU_API_KEY or run --configure-intervals locally.')
-    if not str(athlete).replace('i', '', 1).isdigit():
-        raise RuntimeError('Invalid Intervals.icu athlete ID.')
+    validate_athlete(athlete)
     return key, athlete
 
 
