@@ -51,6 +51,25 @@ class API:
 
 
 class WorkoutTests(unittest.TestCase):
+    def test_cross_month_calendar_deduplicates_same_schedule(self):
+        item = entry(100, 10, '2000-01-31')
+        api = API([workout(10, 'Session')], [item])
+        self.assertEqual(s.calendar(api, date(2000, 1, 24), date(2000, 2, 6)), [item])
+
+    def test_conflicting_calendar_id_stops_before_any_writes(self):
+        item = entry(200, 20, '2000-01-31')
+        responses = [{'calendarItems': [item]},
+                     {'calendarItems': [dict(item, workoutId=21)]}]
+        with patch.object(self.src, 'get_scheduled_workouts', side_effect=responses):
+            before = dict(self.state['workouts'])
+            with self.assertRaisesRegex(RuntimeError, 'Conflicting calendar entries'):
+                s.sync_workouts({'com': self.src, 'cn': self.dst}, self.state,
+                                date(2000, 1, 24), date(2000, 2, 6), True)
+        self.assertEqual(self.src.events, [])
+        self.assertEqual(self.dst.events, [])
+        self.assertEqual(self.state['workouts'], before)
+        s.save.assert_not_called()
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(dir=s.ROOT)
         self.addCleanup(self.temp.cleanup)
@@ -90,6 +109,16 @@ class WorkoutTests(unittest.TestCase):
         self.src.items = []
         self.run_sync()
         self.assertEqual(self.dst.items, [entry(199, 99)])
+
+    def test_failed_backup_preserves_calendar(self):
+        self.src.items = []
+        before = list(self.dst.items)
+        with patch.object(Path, 'write_text', side_effect=OSError('synthetic backup failure')):
+            with self.assertRaises(OSError):
+                self.run_sync()
+        self.assertEqual(self.dst.items, before)
+        self.assertEqual(self.dst.events, [])
+        s.save.assert_not_called()
 
     def test_preview_makes_no_changes(self):
         self.run_sync(False)

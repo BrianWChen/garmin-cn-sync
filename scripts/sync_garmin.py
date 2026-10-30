@@ -242,10 +242,19 @@ def calendar(api, start, end):
     months = sorted({(d.year, d.month) for d in
                      (start + timedelta(days=i) for i in range((end-start).days+1))})
     result = []
+    seen = {}
     for year, month in months:
         for item in api.get_scheduled_workouts(year, month).get('calendarItems', []):
             day = str(item.get('date', ''))[:10]
             if item.get('itemType') == 'workout' and start.isoformat() <= day <= end.isoformat():
+                # Adjacent month responses can include the same schedule.
+                sid = str(item['id']) if item.get('id') else None
+                if sid in seen:
+                    if seen[sid] != item:
+                        raise RuntimeError('Conflicting calendar entries for the same schedule id.')
+                    continue
+                if sid is not None:
+                    seen[sid] = item
                 result.append(item)
     return result
 
