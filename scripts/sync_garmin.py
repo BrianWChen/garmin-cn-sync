@@ -15,7 +15,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / '.packages'))
-from scripts.sync_utils import parse_gmt
+from scripts import activity_overlap
+from scripts.sync_utils import parse_gmt, write_backup
 PRIVATE = ROOT / 'private'
 STATE = PRIVATE / 'state.json'
 
@@ -95,8 +96,7 @@ def confirm_activity(api, activity, start, end):
 
 def sync_activities(apis, state, start, end, apply, keep_overlapping_originals=False):
     activities = {r: api.get_activities_by_date(start, end) for r, api in apis.items()}
-    from scripts.activity_overlap import excluded_activities
-    excluded = excluded_activities(activities) if keep_overlapping_originals else {'cn': set(), 'com': set()}
+    excluded = activity_overlap.excluded_activities(activities) if keep_overlapping_originals else {'cn': set(), 'com': set()}
     for src, dst in [('cn', 'com'), ('com', 'cn')]:
         for a in activities[src]:
             if str(a['activityId']) in excluded[src]:
@@ -181,8 +181,7 @@ def name_source(state, cn, com):
 def sync_activity_names(apis, state, start, end, apply, keep_overlapping_originals=False):
     cn_items = apis['cn'].get_activities_by_date(start, end)
     com_items = apis['com'].get_activities_by_date(start, end)
-    from scripts.activity_overlap import excluded_activities
-    excluded = excluded_activities({'cn': cn_items, 'com': com_items}) if keep_overlapping_originals else {'cn': set(), 'com': set()}
+    excluded = activity_overlap.excluded_activities({'cn': cn_items, 'com': com_items}) if keep_overlapping_originals else {'cn': set(), 'com': set()}
     for cn in cn_items:
         if str(cn['activityId']) in excluded['cn']:
             continue
@@ -316,12 +315,8 @@ def sync_workouts(apis, state, start, end, apply):
               f'{len(current)} old -> {len(wanted)} COM workouts')
         if not apply:
             continue
-        backup = PRIVATE / 'workout-backups'
-        backup.mkdir(exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
-        (backup / f'{day}-{stamp}.json').write_text(
-            json.dumps({'before': current, 'desiredWorkoutIds': sorted(wanted)},
-                       ensure_ascii=False, indent=2), encoding='utf-8')
+        write_backup(PRIVATE / 'workout-backups', day,
+                     {'before': current, 'desiredWorkoutIds': sorted(wanted)})
         for item in current:
             dst.unschedule_workout(item['id'])
         for tid in sorted(wanted):

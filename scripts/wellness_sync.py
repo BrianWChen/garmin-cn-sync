@@ -4,7 +4,8 @@ import json
 import math
 import os
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
+from scripts.sync_utils import write_backup
 
 
 FIELDS = ('restingHR', 'sleepSecs', 'sleepScore', 'avgSleepingHR', 'spO2', 'hrv', 'steps',
@@ -150,12 +151,8 @@ def sync_wellness(api, state, start, end, apply, private, save):
                   + json.dumps(changes, ensure_ascii=False))
             if not apply:
                 continue
-            backup = private / 'wellness-backups' / athlete
-            backup.mkdir(parents=True, exist_ok=True)
-            stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
-            (backup / f'{day}-{stamp}.json').write_text(
-                json.dumps({'before': existing, 'changes': changes}, ensure_ascii=False, indent=2),
-                encoding='utf-8')
+            stamp = write_backup(private / 'wellness-backups' / athlete, day,
+                                 {'before': existing, 'changes': changes})
             # Omit missing fields entirely, preserving unrelated wellness values.
             request_json(session, 'PUT', path, json=changes)
             actual = request_json(session, 'GET', path)
