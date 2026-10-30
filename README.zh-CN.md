@@ -98,7 +98,7 @@ python scripts/sync_garmin.py --apply --from 2025-01-01 --to 2025-01-31 --only n
 
 ## 验证状态
 
-使用 garminconnect 0.3.17，已实际验证活动双向补传、名称校正、wellness 写入及逐日回读确认。课程设备端接收仍需在码表核对。所有测试数据均为虚构。52 项离线测试通过，可运行 `python -m unittest discover -s tests -v`。
+使用 garminconnect 0.3.17，已实际验证活动双向补传、名称校正、wellness 写入及逐日回读确认。课程设备端接收仍需在码表核对。所有测试数据均为虚构，可运行 `python -m unittest discover -s tests -v` 执行离线测试。
 
 脚本位于 `scripts/` 子目录，`.packages/` 与 `private/` 仍保留在仓库根目录，
 继续复用原有依赖和登录状态。根目录 Windows 启动器已更新入口。
@@ -114,10 +114,13 @@ python -m coverage html
 ```
 
 统计包含 `scripts/` 下全部模块及命令行异常处理，未设置覆盖率排除项。
-目前 474 条可执行语句、178 个分支均覆盖（100%）；低于 100% 时
+要求行覆盖率和分支覆盖率均为 100%；低于 100% 时
 `coverage report` 返回失败。可打开 `htmlcov/index.html` 查看逐行报告，
 生成文件已加入 Git 忽略。CI 在 Linux 和 Windows 的 Python 3.12 上执行同样检查。
 离线测试使用虚构数据和模拟服务，覆盖率不代表真实账号接口或设备接收已验证。
+
+自动化验收保持 mock，不为测试向生产账户写入记录。
+本轮改进、验证范围及恢复说明见[Review 实施记录](docs/review-follow-up-plan.zh-CN.md)。
 
 ## 每日健康数据：国内 Garmin → Intervals.icu
 

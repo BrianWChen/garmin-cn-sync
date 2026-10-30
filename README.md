@@ -126,7 +126,7 @@ China Garmin is the source of truth for these fields: differing Intervals.icu va
 
 Uses `garminconnect==0.3.17`. Bidirectional activity sync, name correction, and wellness updates with per-day read-back have been verified on real accounts. Device-side workout delivery still needs checking on the bike computer. All test fixtures are synthetic.
 
-Run the 52 offline tests:
+Run the offline tests:
 
 ```powershell
 python -m unittest discover -s tests -v
@@ -146,12 +146,16 @@ python -m coverage report
 python -m coverage html
 ```
 
-The report covers all modules in `scripts/`, including CLI error handling. All
-474 executable statements and 178 branches are covered (100%); no coverage
-exclusions are used. `coverage report` fails below 100%. Open `htmlcov/index.html`
+The report covers all modules in `scripts/`, including CLI error handling, and
+requires 100% line and branch coverage without coverage exclusions.
+`coverage report` fails below 100%. Open `htmlcov/index.html`
 for details. Generated reports are Git-ignored. CI runs these checks on Linux and
 Windows with Python 3.12. Offline coverage uses synthetic fixtures and mocked
 services; it does not establish real-account API compatibility or device delivery.
+
+Automated tests use mocks and do not write test records to production accounts.
+See the [review implementation record (Simplified Chinese)](docs/review-follow-up-plan.zh-CN.md)
+for completed changes, validation scope, and recovery notes.
 
 
 ## License
