@@ -82,7 +82,7 @@ GarminData 负责 CN/COM 活动、名称、课程与健康数据同步。私有�
 .\.venv\Scripts\python.exe -B scripts\sync_garmin.py --help
 ```
 
-结果为 61 项通过，全部语句及分支覆盖；`fail_under = 100` 保持不变。上游 CI 配置仍在 Windows/Linux 的 Python 3.12 上运行；本轮分支没有推送，未宣称其 GitHub Actions 已执行。
+结果为 61 项通过，全部语句及分支覆盖；`fail_under = 100` 保持不变。CI 在 Windows/Linux 的 Python 3.12 上运行；本轮代码已直接推送到 `main`，两个平台的 [GitHub Actions 检查均已通过](https://github.com/BrianWChen/garmin-cn-sync/actions/runs/41294557971)。
 
 ## 步骤 5：分批重构
 
@@ -115,7 +115,7 @@ GarminData 本地分支为 `codex/review-follow-up`：
 | `7fd191e` | UTC 归一化及状态、payload 安全测试 |
 | `fdecb47` | 共享时间戳和备份写入 |
 
-私有项目入口适配提交为 `dccdec3`，只包含 `tools/maintenance/run.py`。以上提交均未推送。
+私有项目入口适配提交为 `dccdec3`，只包含 `tools/maintenance/run.py`。以上提交均已推送：GarminData 的五个提交已进入 `main`（`da3dc2c`），私有入口适配也已推送到私有项目的 `main`；按用户要求未创建 PR。
 
 源文件、文档、ACL、会话、审计及验证摘要保留在 Git 忽略的 `private/review-execution-20261030/`；测试日志位于 `.tools/review-*-tests.log`，覆盖率数据位于 `.coverage.*`。恢复材料有真实私有数据，继续按受限目录管理。代码回退不等于远端数据回退；本轮没有测试性远端业务写入需要恢复。
 
@@ -125,3 +125,4 @@ GarminData 本地分支为 `codex/review-follow-up`：
 | --- | --- |
 | 2026-10-28 | 建立计划，合并 PR #1，区分上游 52 项 / 100% 与原本地 53 项 / 99% |
 | 2026-10-30 | 完成入口适配、隐私审计与权限处置、测试补充和两批重构；61 项 / 100%；按用户要求改为 mock 验收并关闭本轮 |
+| 2026-11-14 | 复核远端 `main` 与 Windows/Linux CI，修正记录中已过期的未推送、未核对 CI 状态；没有新增功能待办 |
